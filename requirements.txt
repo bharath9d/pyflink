@@ -1,0 +1,2 @@
+pyarrow==0.15.1
+apache-flink==1.11.1
