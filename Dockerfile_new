@@ -1,0 +1,46 @@
+###############################################################################
+#  Licensed to the Apache Software Foundation (ASF) under one
+#  or more contributor license agreements.  See the NOTICE file
+#  distributed with this work for additional information
+#  regarding copyright ownership.  The ASF licenses this file
+#  to you under the Apache License, Version 2.0 (the
+#  "License"); you may not use this file except in compliance
+#  with the License.  You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+# limitations under the License.
+###############################################################################
+
+###############################################################################
+# Build PyFlink Playground Image
+###############################################################################
+
+FROM openjdk:slim-buster as jre
+COPY --from=python:3.7 / /
+ARG PYTHON_VERSION=3.7
+ARG FLINK_VERSION=1.11.1
+ARG FLINK_HOME=/opt/venv/lib/python${PYTHON_VERSION}/site-packages/pyflink
+ARG FLINK_MAVEN_REPO=https://repo.maven.apache.org/maven2/org/apache/flink
+
+#Create Virtual Environment
+ENV VIRTUAL_ENV=/opt/venv
+RUN python3 -m venv $VIRTUAL_ENV
+ENV PATH="$VIRTUAL_ENV/bin:$PATH"
+
+# Install dependencies:
+WORKDIR ${FLINK_HOME}/scripts
+COPY test.py .
+COPY requirements.txt .
+RUN pip3 install --no-cache-dir -r requirements.txt
+
+# Download connector libraries
+RUN wget -P ${FLINK_HOME}/lib/ ${FLINK_MAVEN_REPO}/flink-json/${FLINK_VERSION}/flink-json-${FLINK_VERSION}.jar; \
+    wget -P ${FLINK_HOME}/lib/ ${FLINK_MAVEN_REPO}/flink-sql-connector-kafka_2.11/${FLINK_VERSION}/flink-sql-connector-kafka_2.11-${FLINK_VERSION}.jar; \
+    wget -P ${FLINK_HOME}/lib/ ${FLINK_MAVEN_REPO}/flink-sql-connector-elasticsearch7_2.11/${FLINK_VERSION}/flink-sql-connector-elasticsearch7_2.11-${FLINK_VERSION}.jar;
+
+ONBUILD RUN .{FLINK_HOME}/bin/start-cluster.sh
